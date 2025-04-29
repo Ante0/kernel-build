@@ -6,7 +6,7 @@ on:
       KERNEL_REPO:
         description: 'KERNEL_REPO'
         required: true
-        default: 'https://github.com/zainarbani/kernel-mtk'
+        default: 'https://github.com/ante0/kernel-mtk'
       KERNEL_BRANCH:
         description: 'KERNEL_BRANCH'
         required: true
@@ -47,20 +47,20 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE/project
         git clone -b ${{ github.event.inputs.KERNEL_BRANCH }} ${{ github.event.inputs.KERNEL_REPO }} linux --recurse-submodules --depth=1 &> /dev/null
-        git clone -b master https://github.com/zainarbani/AnyKernel3 AnyKernel3 --depth=1 &> /dev/null
+        git clone -b master https://github.com/ante0/AnyKernel3 AnyKernel3 --depth=1 &> /dev/null
 
     - name: Building Kernel
       run: |
         cd $GITHUB_WORKSPACE/project/linux
         PATH=$GITHUB_WORKSPACE/project/clang/bin:$PATH
-        export TZ="Asia/Jakarta"
+        export TZ="Europe/Stockholm"
         export DATE=$(date "+%Y%m%d-%H%M")
         echo "BUILD_DATE=$(date "+%Y%m%d%H%M")" >> $GITHUB_ENV
         echo "KERNEL_VER=$(make kernelversion)" >> $GITHUB_ENV
         echo "CLANG_VER=$(clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')" >> $GITHUB_ENV
         export ARCH=arm64
         export KBUILD_BUILD_HOST=builder
-        export KBUILD_BUILD_USER=zainarbani
+        export KBUILD_BUILD_USER=ante0
         export KBUILD_COMPILER_STRING="$(clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')"
         echo "-OverHeat-LTO" > localversion
         make O=out ARCH=$ARCH ${{ github.event.inputs.KERNEL_DEFCONFIG }}
@@ -82,41 +82,3 @@ jobs:
         cp $GITHUB_WORKSPACE/project/Image.gz-dtb-ksu Image.gz-dtb
         zip -r9 $GITHUB_WORKSPACE/project/OverHeat-dev-ksu.zip -- *
         
-    - name: Upload Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          ${{ github.workspace }}/project/OverHeat-dev.zip
-          ${{ github.workspace }}/project/OverHeat-dev-ksu.zip
-        name: OverHeat-${{ env.BUILD_DATE }}
-        tag_name: ${{ env.BUILD_DATE }}
-        body: |
-          Repo: ${{ github.event.inputs.KERNEL_REPO }}
-          Branch: ${{ github.event.inputs.KERNEL_BRANCH }}
-          Config: ${{ github.event.inputs.KERNEL_DEFCONFIG }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Update TG
-      uses: appleboy/telegram-action@master
-      with:
-        to: ${{ secrets.CHAT_ID }}
-        token: ${{ secrets.BOT_TOKEN }}
-        format: html
-        disable_web_page_preview: true
-        message: |
-          <b>OverHeat-Kernel Update</b>
-
-          <b>Build Date: </b>${{ env.BUILD_DATE }}
-          
-          <a href="https://github.com/${{ github.repository }}/releases/tag/${{ env.BUILD_DATE }}">Download</a>
-          
-          <a href="${{ github.event.inputs.KERNEL_REPO }}/commits/${{ github.event.inputs.KERNEL_BRANCH }}">Changelogs</a>
-
-          <b>Hotfix:</b>
-          ${{ github.event.inputs.KERNEL_HOTFIX }}
-
-          <b>Config: </b>${{ github.event.inputs.KERNEL_DEFCONFIG }}
-          <b>Kernel Ver: </b>${{ env.KERNEL_VER }}
-          <b>Clang Ver: </b>${{ env.CLANG_VER }}
-          <b>Maintainer: </b>@AnotherZain
